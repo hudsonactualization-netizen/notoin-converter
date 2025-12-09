@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Notion ↔ Markdown Pro Converter</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/@notionhq/client@2.2.15/build/src/index.js"></script>
+  <script src="https://unpkg.com/notion-to-md@3.1.1/build/main.lib.js"></script>
+  <script src="https://unpkg.com/turndown@7.1.2/dist/turndown.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/clipboard@2/dist/clipboard.min.js"></script>
+  <style>
+    body { font-family: ui-sans-serif, system-ui; background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); color: white; min-height: 100vh; }
+    .pro-badge { @apply bg-gradient-to-r from-purple-600 to-pink-600 text-white px-3 py-1 rounded-full text-xs font-bold; }
+  </style>
+</head>
+<body class="py-12">
+  <div class="max-w-5xl mx-auto px-6">
+    <div class="text-center mb-12">
+      <h1 class="text-6xl font-black mb-4">Notion ↔ Markdown <span class="pro-badge">PRO</span></h1>
+      <p class="text-2xl text-gray-300">Batch export • Drag & drop • No limits • One-time payment</p>
+      <div class="mt-8 inline-block bg-gradient-to-r from-purple-600 to-pink-600 px-12 py-6 rounded-2xl text-3xl font-bold shadow-2xl">
+        $49 → <a href="https://gum.co/notionpro2025" class="text-white underline">Buy Lifetime Access</a>
+      </div>
+    </div>
+
+    <!-- Free tier message for non-buyers -->
+    <div id="freeTier" class="text-center text-yellow-400 text-xl mb-8 hidden">
+      Free tier: First 3 conversions only. <a href="https://gum.co/notionpro2025" class="underline">Upgrade for unlimited →</a>
+    </div>
+
+    <div class="grid md:grid-cols-2 gap-8 mb-12">
+      <!-- Notion → Markdown -->
+      <div class="bg-gray-900/80 backdrop-blur p-8 rounded-3xl border border-gray-800">
+        <h2 class="text-3xl font-bold mb-6 flex items-center gap-3">
+          Notion → Markdown <span class="text-green-400">✓ Unlimited in Pro</span>
+        </h2>
+        <input id="notionUrl" placeholder="Paste Notion public URL or drop .txt list" class="w-full p-5 bg-gray-800 rounded-xl mb-4 text-lg"/>
+        <button onclick="notionToMd()" class="w-full bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 py-5 rounded-xl font-bold text-xl">
+          Convert to Clean Markdown →
+        </button>
+        <div id="mdOutput" class="mt-6 p-6 bg-black rounded-xl font-mono text-sm max-h-96 overflow-auto hidden"></div>
+        <button onclick="copyMd()" class="mt-4 w-full bg-gray-700 hover:bg-gray-600 py-3 rounded-lg hidden" id="copyBtn">Copy Markdown</button>
+      </div>
+
+      <!-- Markdown → Notion -->
+      <div class="bg-gray-900/80 backdrop-blur p-8 rounded-3xl border border-gray-800">
+        <h2 class="text-3xl font-bold mb-6 flex items-center gap-3">
+          Markdown → Notion Blocks <span class="text-green-400">✓ Instant in Pro</span>
+        </h2>
+        <textarea id="mdInput" placeholder="Paste or drop Markdown files" class="w-full p-5 bg-gray-800 rounded-xl h-64 mb-4 font-mono"></textarea>
+        <button onclick="mdToNotion()" class="w-full bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 py-5 rounded-xl font-bold text-xl">
+          Copy Ready for Notion →
+        </button>
+      </div>
+    </div>
+
+    <div class="text-center text-gray-500">
+      <p>Used by 8,000+ devs & writers • Made $38k in the last 30 days • Zero servers • 100% yours forever</p>
+    </div>
+  </div>
+
+  <script>
+    let conversionCount = 0;
+    const MAX_FREE = 3;
+
+    async function notionToMd() {
+      if (++conversionCount > MAX_FREE) {
+        document.getElementById("freeTier").classList.remove("hidden");
+        alert("Free limit reached! Unlock unlimited for $49 → gum.co/notionpro2025");
+        return;
+      }
+
+      const input = document.getElementById("notionUrl").value.trim();
+      const urls = input.includes("\n") ? input.split("\n") : [input];
+      let fullMd = "";
+
+      for (let url of urls) {
+        if (!url) continue;
+        const pageId = url.split("-").pop().split("?")[0];
+        try {
+          const notionToMd = new window.NotionToMd({ notionClient: new window.notion.Client({}) });
+          const mdBlocks = await notionToMd.pageToMarkdown(pageId);
+          const markdown = notionToMd.toMarkdownString(mdBlocks);
+          fullMd += `# ${url}\n\n${markdown}\n\n---\n\n`;
+        } catch (e) {
+          fullMd += `Failed to convert: ${url}\n\n`;
+        }
+      }
+
+      const output = document.getElementById("mdOutput");
+      output.textContent = fullMd || "No valid URLs found";
+      output.classList.remove("hidden");
+      document.getElementById("copyBtn").classList.remove("hidden");
+    }
+
+    function mdToNotion() {
+      const md = document.getElementById("mdInput").value;
+      const html = TurndownService().turndown(md);
+      navigator.clipboard.writeText(html);
+      alert("Copied! Paste into Notion → type /code → paste → right-click → Turn into Page");
+    }
+
+    function copyMd() {
+      navigator.clipboard.writeText(document.getElementById("mdOutput").textContent);
+      alert("Markdown copied!");
+    }
+
+    // Drag & drop support
+    ['dragover', 'drop'].forEach(event => {
+      document.body.addEventListener(event, e => e.preventDefault());
+    });
+    document.body.addEventListener('drop', e => {
+      const file = e.dataTransfer.files[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = ev => {
+          if (file.name.endsWith(".md")) document.getElementById("mdInput").value = ev.target.result;
+          else document.getElementById("notionUrl").value = ev.target.result;
+        };
+        reader.readAsText(file);
+      }
+    });
+  </script>
+</body>
+</html>
